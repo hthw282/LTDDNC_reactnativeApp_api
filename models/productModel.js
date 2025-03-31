@@ -33,7 +33,7 @@ const productSchema = new mongoose.Schema(
     brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
     description: {
       type: String,
-      required: [true, "produvct description is required"],
+      required: [true, "product description is required"],
     },
     price: {
       type: Number,
@@ -85,5 +85,5 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const productModel = mongoose.model("Products", productSchema);
+export const productModel = mongoose.model("Product", productSchema);
 export default productModel;

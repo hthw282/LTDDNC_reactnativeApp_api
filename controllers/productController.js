@@ -2,6 +2,8 @@ import productModel from "../models/productModel.js";
 
 import cloudinary from "cloudinary";
 import { getDataUri } from "./../utils/features.js";
+import { voucherModel } from "../models/voucherModel.js";
+import { commentModel } from "../models/commentMode.js";
 
 // GET ALL PRODUCTS
 export const getAllProductsController = async (req, res) => {
@@ -320,56 +322,212 @@ export const deleteProductController = async (req, res) => {
   }
 };
 
-// // CREATE PRODUCT REVIEW AND COMMENT
-// export const productReviewController = async (req, res) => {
-//   try {
-//     const { comment, rating } = req.body;
-//     // find product
-//     const product = await productModel.findById(req.params.id);
-//     // check previous review
-//     const alreadyReviewed = product.reviews.find(
-//       (r) => r.user.toString() === req.user._id.toString()
-//     );
-//     if (alreadyReviewed) {
-//       return res.status(400).send({
-//         success: false,
-//         message: "Product Alredy Reviewed",
-//       });
-//     }
-//     // review object
-//     const review = {
-//       name: req.user.name,
-//       rating: Number(rating),
-//       comment,
-//       user: req.user._id,
-//     };
-//     // passing review object to reviews array
-//     product.reviews.push(review);
-//     // number or reviews
-//     product.numReviews = product.reviews.length;
-//     product.rating =
-//       product.reviews.reduce((acc, item) => item.rating + acc, 0) /
-//       product.reviews.length;
-//     // save
-//     await product.save();
-//     res.status(200).send({
-//       success: true,
-//       message: "Review Added!",
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     // cast error ||  OBJECT ID
-//     if (error.name === "CastError") {
-//       return res.status(500).send({
-//         success: false,
-//         message: "Invalid Id",
-//       });
-//     }
-//     res.status(500).send({
-//       success: false,
-//       message: "Error In Review Comment API",
-//       error,
-//     });
-//   }
-// };
+// CREATE PRODUCT REVIEW AND COMMENT
+export const productReviewController = async (req, res) => {
+  try {
+    const { comment, rating } = req.body;
+    const userId = req.user._id;
+
+    // find product
+    const product = await productModel.findById(req.params.id);
+    // check previous review
+    const alreadyReviewed = product.reviews.find(
+      (r) => r.user.toString() === userId.toString()
+    );
+    if (alreadyReviewed) {
+      return res.status(400).send({
+        success: false,
+        message: "Product Already Reviewed",
+      });
+    }
+    // review object
+    const review = {
+      name: req.user.name,
+      rating: Number(rating),
+      comment,
+      user: req.user._id,
+    };
+    // passing review object to reviews array
+    product.reviews.push(review);
+    // number or reviews
+    product.numReviews = product.reviews.length;
+    product.rating =
+      product.reviews.reduce((acc, item) => item.rating + acc, 0) /
+      product.reviews.length;
+    // save
+    await product.save();
+
+    // bonus after review
+    let rewardMessage = "";
+
+    if (rating >= 4) {
+      const discountCode = `DISCOUNT-${Date.now()}`
+      const newVoucher = new voucherModel({
+        code: discountCode,
+        discount: 10, //discount 10%
+        minOrderValue: 1000000, //min total 1 milion
+        expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+      });
+
+      await newVoucher.save();
+      rewardMessage = `You have been rewarded with a 10% discount voucher. Use code: ${discountCode} at checkout.`
+    } else {
+      let userPoints = await loyaltyPointModel.findOne({ user: userId });
+      if (!userPoints) {
+        userPoints = new loyaltyPointModel({ user: userId, points: 0, history: [] });
+      }
+
+      const reviewPoints = 10;
+      userPoints.points += reviewPoints;
+      userPoints.history.push({ action: "Product Review", points: reviewPoints });
+      
+      await userPoints.save();
+      rewardMessage = `Thank you for your review. You have recieved ${reviewPoints} loyalty points.`
+    }
+    res.status(200).send({
+      success: true,
+      message: "Review Added!",
+      reward: rewardMessage,
+    });
+  } catch (error) {
+    console.log(error);
+    // cast error ||  OBJECT ID
+    if (error.name === "CastError") {
+      return res.status(500).send({
+        success: false,
+        message: "Invalid Id",
+      });
+    }
+    res.status(500).send({
+      success: false,
+      message: "Error In Review Comment API",
+      error,
+    });
+  }
+};
+
+// CREATE COMMENT
+export const createCommentController = async (req, res) => {
+  try {
+    const {productId, comment} = req.body;
+
+    //check if product exists
+    const productExists = await productModel.findById(productId);
+    if (!productExists) {
+      return res.status(404).send({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    const newComment = new commentModel({
+      user: req.user._id,
+      product: productId,
+      comment
+    });
+
+    await newComment.save();
+    res.status(201).send({
+      success: true,
+      message: "Comment created successfully",
+      data: newComment
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error In Comment API",
+      error,
+    });
+  }
+}
+
+// GET ALL COMMENTS BY PRODUCT
+export const getCommentsByProductController = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const comments = await commentModel.find({ product: productId }).populate("user", "name profilePic");
+    res.status(200).send({
+      success: true,
+      message: "Comments fetched successfully",
+      totalComments: comments.length,
+      comments,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error In Get Comments API",
+      error,
+    });
+  }
+}
+
+//DELETE COMMENT (THEIR OWN COMMENT OR ADMIN)
+export const deleteCommentController = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const comment = await commentModel.findById(commentId);
+    if (!comment) {
+      return res.status(404).send({
+        success: false,
+        message: "Comment not found"
+      });
+    }
+    
+    if (comment.user.toString() !== req.user._id.toString()
+      //  && req.user.role !== "admin"
+      ) {
+      return res.status(403).send({
+        success: false,
+        message: "Unauthorized to delete comment"
+      });
+    }
+
+    await comment.deleteOne();
+    res.status(200).send({
+      success: true,
+      message: "Comment deleted successfully"
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error In Delete Comment API",
+      error,
+    });
+  }
+}
+
+//get similar products
+export const getSimilarProductsController = async (req, res) => {
+  try {
+    const {productId} = req.params;
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res.status(404).send({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    const products = await productModel.find({
+      category: product.category,
+      _id: { $ne: product._id }
+    }).limit(5);
+
+    res.status(200).send({
+      success: true,
+      message: "Similar products fetched successfully",
+      products
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error In Get Similar Products API",
+      error
+    });
+  }
+}
 

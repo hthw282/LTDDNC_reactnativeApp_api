@@ -21,4 +21,5 @@ router.get("/status/:status", isAuth, getOrdersByStatusController)
 
 //CANCEL ORDER
 router.put("/cancel/:id", isAuth, cancelOrderController)
+
 export default router;

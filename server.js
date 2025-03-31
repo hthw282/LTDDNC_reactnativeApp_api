@@ -44,6 +44,10 @@ import productRoutes from "./routes/productRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
+import loyaltyRoutes from "./routes/loyaltyRoutes.js";
+import voucherRoutes from "./routes/voucherRoutes.js";
+import favoriteRoutes from "./routes/favoriteRoutes.js";
+
 
 app.use('/api/v1', testRoutes);
 app.use('/api/v1/user', userRoutes);
@@ -51,6 +55,9 @@ app.use("/api/v1/product", productRoutes);
 app.use("/api/v1/category", categoryRoutes);
 app.use('/api/v1/order', orderRoutes);
 app.use('/api/v1/brand', brandRoutes);
+app.use('/api/v1/loyalty', loyaltyRoutes);
+app.use('/api/v1/voucher', voucherRoutes);
+app.use('/api/v1/favorites', favoriteRoutes);
 
 
 app.get('/', (req, res) => {

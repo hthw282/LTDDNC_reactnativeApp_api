@@ -193,3 +193,38 @@ export const cancelOrderController = async (req, res) => {
         return res.status(500).json({ message: "Lỗi server", error });
     }
 };
+
+//count total purchases for a product
+export const countTotalPurchasesForProductController = async (req, res) => {
+    try {
+        const { productId } = req.params;
+
+        const orders = await orderModel.find({
+            "orderItems.product": productId,
+            orderStatus: "delivered",
+        }); 
+
+        // đếm tổng số lần sản phẩm được mua
+        let totalPurchases = 0;
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.productId.toString() === productId) {
+                    totalPurchases += item.quantity; // cộng tổng số lượng sản phẩm đã mua
+                }
+            });
+        });
+
+        res.status(200).send({
+            success: true,
+            message: "Total purchases counted successfully",
+            totalPurchases
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({
+            success: false,
+            message: "Error In Get Buyers Count API",
+            error,
+        });
+    }
+};

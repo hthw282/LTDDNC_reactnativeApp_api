@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema(
                 },
                 product: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: 'Products',
+                    ref: 'Product',
                     required: true
                 }
             }
@@ -49,7 +49,7 @@ const orderSchema = new mongoose.Schema(
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Users',
+            ref: 'User',
             required: [true, 'user id is required']
         },
         paidAt: Date,
@@ -87,5 +87,5 @@ const orderSchema = new mongoose.Schema(
     { timestamps: true}
 );
 
-export const orderModel = mongoose.model("Orders", orderSchema)
+export const orderModel = mongoose.model("Order", orderSchema)
 export default orderModel
