@@ -1,7 +1,7 @@
 import orderModel from "../models/orderModel.js"
 import productModel from "../models/productModel.js"
 import cron from "node-cron"
-
+import mongoose from "mongoose";
 // xác nhận đơn hàng sau 30 phút nếu shop chưa xác nhận
 cron.schedule("*/5 * * * *", async () => { 
     const timeLimit = new Date(Date.now() - 30 * 60 * 1000);
@@ -199,17 +199,20 @@ export const countTotalPurchasesForProductController = async (req, res) => {
     try {
         const { productId } = req.params;
 
+        //convert string to ObjectId
+        const productIdObject = new mongoose.Types.ObjectId(productId);
+
         const orders = await orderModel.find({
-            "orderItems.product": productId,
+            "orderItems.product": productIdObject,
             orderStatus: "delivered",
         }); 
 
         // đếm tổng số lần sản phẩm được mua
         let totalPurchases = 0;
         orders.forEach(order => {
-            order.items.forEach(item => {
-                if (item.productId.toString() === productId) {
-                    totalPurchases += item.quantity; // cộng tổng số lượng sản phẩm đã mua
+            order.orderItems.forEach(item => {
+                if (item.product.equals(productIdObject)) {
+                    totalPurchases += Number(item.quantity); // cộng tổng số lượng sản phẩm đã mua
                 }
             });
         });
@@ -228,3 +231,178 @@ export const countTotalPurchasesForProductController = async (req, res) => {
         });
     }
 };
+
+// =========== ADMIN PANEL =========== //
+// GET ALL ORDERS
+export const getAllOrdersController = async (req, res) => {
+    try {
+        const orders = await orderModel.find({}).populate("user", "name email").sort({createdAt: -1})
+        res.status(200).send({
+            success: true,
+            message: "All orders fetched successfully",
+            totalOrders: orders.length,
+            orders,
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            success: false,
+            message: 'Error in get all orders API',
+            error,
+        })
+    }
+}
+
+// CHANGE ORDER STATUS
+export const changeOrderStatusController = async (req, res) => {
+    try {
+        const order = await orderModel.findById(req.params.id);
+
+        if (!order) {
+            return res.status(404).send({
+                success: false,
+                message: 'Invalid order'
+            })
+        }
+        if (order.orderStatus === "new") {
+            order.orderStatus = "confirmed";
+        } else if (order.orderStatus === "confirmed") {
+            order.orderStatus = "preparing";
+        }
+        else if (order.orderStatus === "preparing") {
+            order.orderStatus = "delivering";
+        } else if (order.orderStatus === "delivering") {
+            order.orderStatus = "delivered";
+            order.deliverAt = new Date().now();
+        } else if (order.orderStatus === "delivered") {
+            return res.status(500).send({
+                success: false,
+                message: 'Order already delivered'
+            })
+        } else if (order.orderStatus === "canceled") {
+            return res.status(500).send({
+                success: false,
+                message: 'Order already canceled'
+            })
+        }
+
+        await order.save();
+
+        res.status(200).send({
+            success: true,
+            message: "Order status updated successfully",
+            order,
+        });
+    } catch (error) {
+        console.log(error)
+        if (error.name === "CastError") {
+            return res.status(500).send({
+                success: false,
+                message: "Invalid Id",
+            })
+        }
+        res.status(500).send({
+            success: false,
+            message: 'Error in change order status API',
+            error,
+        })
+    }
+}
+
+// export const getFinancialReportController = async (req, res) => {
+//     try {
+//         const { startDate, endDate } = req.body;
+//         const orders = await orderModel.find({
+//             orderCreatedAt: {
+//                 $gte: new Date(startDate),
+//                 $lte: new Date(endDate),
+//             },
+//         });
+
+//         let totalSales = 0;
+//         let totalOrders = 0;
+
+//         orders.forEach(order => {
+//             totalSales += order.totalAmount;
+//             totalOrders += 1;
+//         });
+
+//         res.status(200).send({
+//             success: true,
+//             message: "Financial report fetched successfully",
+//             totalSales,
+//             totalOrders,
+//         });
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).send({
+//             success: false,
+//             message: "Error in financial report API",
+//             error,
+//         });
+//     }
+// }
+
+export const getFinancialSummaryByUserController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const orders = await orderModel.find({user: id})
+
+        if (!orders) {
+            return res.status(404).send({
+                success: false,
+                message: "No orders found for this user",
+                totalOrders: 0,
+                totalSpent: 0,
+                byStatus: {
+                }
+            })
+        }
+
+        const byStatus = {
+            new: {totalAmount: 0, count: 0},
+            confirmed: {totalAmount: 0, count: 0},
+            preparing: {totalAmount: 0, count: 0},
+            delivering: {totalAmount: 0, count: 0},
+            delivered: {totalAmount: 0, count: 0},
+            canceled: {totalAmount: 0, count: 0},
+        };
+
+        let totalOrders = 0;
+        let totalSpent = 0;
+
+        for (const order of orders) {
+            const status = order.orderStatus;
+            const amount = order.totalAmount || 0;
+
+            totalOrders++;
+
+            //chỉ cộng tiền cho các đơn hàng đã giao
+            if (status === "delivered") {
+                totalSpent += amount;
+            }
+
+            if (byStatus[status]) {
+                byStatus[status].totalAmount += amount;
+                byStatus[status].count += 1;
+            }
+        }
+
+        res.status(200).send({
+            success: true,
+            message: "Financial summary fetched successfully",
+            totalOrders,
+            totalSpent,
+            byStatus,
+        });
+        
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({
+            success: false,
+            message: "Error in financial summary API",
+            error,
+        });
+    }
+}

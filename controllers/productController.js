@@ -4,6 +4,7 @@ import cloudinary from "cloudinary";
 import { getDataUri } from "./../utils/features.js";
 import { voucherModel } from "../models/voucherModel.js";
 import { commentModel } from "../models/commentMode.js";
+import { loyaltyPointModel } from "../models/loyaltyPointModel.js";
 
 // GET ALL PRODUCTS
 export const getAllProductsController = async (req, res) => {
@@ -327,9 +328,16 @@ export const productReviewController = async (req, res) => {
   try {
     const { comment, rating } = req.body;
     const userId = req.user._id;
-
-    // find product
+    console.log("Product ID:", req.params.id);
     const product = await productModel.findById(req.params.id);
+    //valdiation
+    if (!product) {
+      return res.status(404).send({
+        success: false,
+        message: "product not found",
+      });
+    }
+
     // check previous review
     const alreadyReviewed = product.reviews.find(
       (r) => r.user.toString() === userId.toString()
@@ -375,6 +383,7 @@ export const productReviewController = async (req, res) => {
       let userPoints = await loyaltyPointModel.findOne({ user: userId });
       if (!userPoints) {
         userPoints = new loyaltyPointModel({ user: userId, points: 0, history: [] });
+        await userPoints.save();
       }
 
       const reviewPoints = 10;
@@ -405,6 +414,53 @@ export const productReviewController = async (req, res) => {
     });
   }
 };
+
+//GET REVIEWS BY PRODUCT
+export const getProductReviewsController = async (req, res) => {
+  try {
+    const { productId } = req.params; 
+    if (!productId) {
+      return res.status(400).send({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    const product = await productModel.findById(productId).populate({
+      path: "reviews.user", 
+      select: "name",
+    });
+    if (!product) {
+      return res.status(404).send({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Kiểm tra nếu không có review
+    if (product.reviews.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No reviews available for this product",
+        reviews: [],
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Reviews fetched successfully",
+      totalReviews: product.reviews.length,
+      reviews: product.reviews,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error In Get Reviews API",
+      error,
+    });
+  }
+}
 
 // CREATE COMMENT
 export const createCommentController = async (req, res) => {
@@ -446,7 +502,7 @@ export const createCommentController = async (req, res) => {
 export const getCommentsByProductController = async (req, res) => {
   try {
     const { productId } = req.params;
-    const comments = await commentModel.find({ product: productId }).populate("user", "name profilePic");
+    const comments = await commentModel.find({ product: productId }).populate("user", "name");
     res.status(200).send({
       success: true,
       message: "Comments fetched successfully",

@@ -40,7 +40,12 @@ const userSchema = new mongoose.Schema({
         url: {
             type: String,
         }
-    }
+    },
+    role: {
+        type: String,
+        default: 'user',
+        enum: ['admin', 'user', 'shopkeeper'],
+    },
 }, {timestamps: true});
 
 //function

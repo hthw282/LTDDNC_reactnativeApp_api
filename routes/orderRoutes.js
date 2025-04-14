@@ -1,6 +1,6 @@
 import express from "express";
-import { cancelOrderController, createOrderController, getMyOrdersController, getOrdersByStatusController, getSingleOrderDetailsController } from "../controllers/orderController.js";
-import { isAuth } from "../middlewares/authMiddleware.js";
+import { cancelOrderController, createOrderController, getAllOrdersController, getMyOrdersController, getOrdersByStatusController, getSingleOrderDetailsController, changeOrderStatusController, getFinancialSummaryByUserController } from "../controllers/orderController.js";
+import { isAdmin, isAuth } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -22,4 +22,11 @@ router.get("/status/:status", isAuth, getOrdersByStatusController)
 //CANCEL ORDER
 router.put("/cancel/:id", isAuth, cancelOrderController)
 
+router.get("/financial-summary/:id", isAuth, getFinancialSummaryByUserController)
+//  ===================ÀDMIN ROUTES==================
+//GET ALL ORDERS FOR ADMIN
+router.get("/admin/get-all-orders", isAuth, isAdmin, getAllOrdersController)
+
+//change order status
+router.put("/admin/order/:id", isAuth, isAdmin, changeOrderStatusController)
 export default router;

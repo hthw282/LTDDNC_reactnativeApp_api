@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "./../middlewares/authMiddleware.js";
+import { isAdmin, isAuth } from "./../middlewares/authMiddleware.js";
 import {
   createBrand,
   deleteBrandController,
@@ -14,16 +14,16 @@ const router = express.Router();
 // ============== CAT ROUTES ==================
 
 // CREATE BRAND
-router.post("/create", isAuth, singleUpload, createBrand);
+router.post("/create", isAuth, isAdmin, singleUpload, createBrand);
 
 // GET ALL BRAND
 router.get("/get-all", getAllBrandsController);
 
 // DELETE  BRAND
-router.delete("/delete/:id", isAuth, deleteBrandController);
+router.delete("/delete/:id", isAuth, isAdmin, deleteBrandController);
 
 // UPDATE ALL BRAND
-router.put("/update/:id", isAuth, updateBrandController);
+router.put("/update/:id", isAuth, isAdmin, updateBrandController);
 
 // ====================================================================
 

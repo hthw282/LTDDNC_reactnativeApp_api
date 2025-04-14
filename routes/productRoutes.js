@@ -8,11 +8,11 @@ import {
   deleteProductImageController,
   getAllProductsController,
   getCommentsByProductController,
+  getProductReviewsController,
   getSimilarProductsController,
   getSingleProductController,
   getTopProductsController,
   productReviewController,
-//   productReviewController,
   updateProductController,
   updateProductImageController,
 } from "../controllers/productController.js";
@@ -42,7 +42,6 @@ router.put("/:id", isAuth, updateProductController);
 router.put(
   "/image/:id",
   isAuth,
-//   isAdmin,
   singleUpload,
   updateProductImageController
 );
@@ -51,7 +50,6 @@ router.put(
 router.delete(
   "/delete-image/:id",
   isAuth,
-//   isAdmin,
   deleteProductImageController
 );
 
@@ -62,6 +60,8 @@ router.delete("/delete/:id", isAuth,
 
 //REVIEW PRODUCT
 router.put("/:id/review", isAuth, productReviewController);
+router.get("/:productId/reviews", getProductReviewsController);
+
 
 //COMMENT
 router.post("/comment", isAuth, createCommentController);
@@ -70,7 +70,6 @@ router.delete("/comment/:commentId", isAuth, deleteCommentController);
 
 //GET PRODUCT
 router.get("/similar/:productId", getSimilarProductsController);
-
 
 //VIEWED PRODUCTS
 router.post("/:productId/viewed", isAuth, addViewedProductController);

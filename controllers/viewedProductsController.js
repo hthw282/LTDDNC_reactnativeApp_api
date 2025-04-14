@@ -57,14 +57,18 @@ export const getViewedProductsController = async (req, res) => {
         }
         const userId = new mongoose.Types.ObjectId(req.user._id); // Convert to ObjectId
         const viewedProducts = await ViewedProductsModel.findOne({ user: userId })
-            .populate("products.product", "name price image")
+            .populate("products.product", "name price images description rating numReviews stock")
             .sort({ "products.viewAt": -1 });
         
         res.status(200).send({
             success: true,
             message: "Viewed products fetched successfully",
-            viewedProducts: viewedProducts ? viewedProducts.products : [],
-        });
+            viewedProducts: viewedProducts
+            ? viewedProducts.products.map((item) => ({
+                  ...item.product._doc, // Lấy dữ liệu sản phẩm ra khỏi object product
+                  viewAt: item.viewAt, // Giữ lại thời gian xem (nếu cần)
+              }))
+            : [],        });
     } catch (error) {
         console.error("Error fetching viewed products:", error);
         res.status(500).send({
