@@ -90,38 +90,51 @@ export const getMyOrdersController = async (req, res) => {
     }
 }
 
-//GET SINGLE ORDER DETAILS
 export const getSingleOrderDetailsController = async (req, res) => {
     try {
-        //find orders
+        //find order and populate orderItems.product
         const order = await orderModel.findById(req.params.id)
+            .populate({
+                path: 'orderItems.product',
+                model: 'Product',
+                populate: {
+                    path: 'reviews.user',
+                    model: 'User',
+                    select: 'name', 
+                },
+            })
+            .populate('user', 'name email')
+            // .populate('shippingInfo.user', 'name city country address postalCode phone') 
+            .exec();
+
         //validation
         if (!order) {
             return res.status(404).send({
                 success: false,
-                message: 'no order found'
-            })
+                message: 'no order found',
+            });
         }
+
         res.status(200).send({
             success: true,
             message: 'your order fetched',
             order,
-        })
+        });
     } catch (error) {
-        console.log(error)
+        console.log(error);
         if (error.name === "CastError") {
             return res.status(500).send({
                 success: false,
                 message: "Invalid Id",
-            })
+            });
         }
         res.status(500).send({
             success: false,
             message: 'Error in orders details API',
             error,
-        })
+        });
     }
-}
+};
 
 //GET ORDERS BY STATUS
 export const getOrdersByStatusController = async (req, res) => {

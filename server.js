@@ -82,6 +82,8 @@ import loyaltyRoutes from "./routes/loyaltyRoutes.js";
 import voucherRoutes from "./routes/voucherRoutes.js";
 import favoriteRoutes from "./routes/favoriteRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
+import bannerRoutes from "./routes/bannerRoutes.js";
 
 app.use('/api/v1', testRoutes);
 app.use('/api/v1/user', userRoutes);
@@ -93,6 +95,9 @@ app.use('/api/v1/loyalty', loyaltyRoutes);
 app.use('/api/v1/voucher', voucherRoutes);
 app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/notification', notificationRoutes);
+app.use('/api/v1/cart', cartRoutes);  
+app.use('/api/v1/banner', bannerRoutes);
+
 
 app.get('/', (req, res) => {
     return res.status(200).send("<h1>API is running</h1>");

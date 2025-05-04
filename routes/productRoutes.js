@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "./../middlewares/authMiddleware.js";
+import { isAdmin, isAuth } from "./../middlewares/authMiddleware.js";
 import {
   createCommentController,
   createProductController,
@@ -54,9 +54,7 @@ router.delete(
 );
 
 // delete product
-router.delete("/delete/:id", isAuth,
-  //  isAdmin,
-    deleteProductController);
+router.delete("/delete/:id", isAuth, isAdmin, deleteProductController);
 
 //REVIEW PRODUCT
 router.put("/:id/review", isAuth, productReviewController);

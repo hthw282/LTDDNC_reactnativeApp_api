@@ -7,6 +7,6 @@ const router = express.Router();
 router.post('/send', isAuth, sendNotificationController)
 router.post('/send-to-all', isAuth, sendNotificationToAllController)
 router.get('/:userId', isAuth, getNotificationsByUserController)
-router.put('/mark-as-read', isAuth, markNotificationAsReadController)
+router.post('/mark-as-read', isAuth, markNotificationAsReadController)
 
 export default router;

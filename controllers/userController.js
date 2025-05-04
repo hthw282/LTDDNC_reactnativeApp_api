@@ -194,7 +194,7 @@ export const loginController = async (req, res) => {
       const { email, password } = req.body;
       //validation
       if (!email || !password) {
-        return res.status(500).send({
+        return res.status(400).send({
           success: false,
           message: "Please Add Email OR Password",
         });
@@ -212,7 +212,7 @@ export const loginController = async (req, res) => {
       const isMatch = await user.comparePassword(password);
       //valdiation pass
       if (!isMatch) {
-        return res.status(500).send({
+        return res.status(401).send({
           success: false,
           message: "invalid credentials",
         });
@@ -222,10 +222,10 @@ export const loginController = async (req, res) => {
       res
         .status(200)
         .cookie('token', token, {
-            expires: new Date(Date.now()+15*24*60*60*1000),
-            secure: process.env.NODE_ENV === 'development' ? true : false,
-            httpOnly: process.env.NODE_ENV === 'development' ? true : false,
-            sameSite: process.env.NODE_ENV === 'development' ? true : false,
+          expires: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          secure: process.env.NODE_ENV === 'production', // Sử dụng production
+          httpOnly: true,
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Thêm sameSite
         })
         .send({
           success: true,
@@ -245,8 +245,10 @@ export const loginController = async (req, res) => {
 // GET USER PROFILE
 export const getUserProfileController = async (req, res) => {
   try {
-    const user = req.user; // Người dùng đã được gán từ middleware
+    const user = await userModel.findById(req.user._id)
     user.password = undefined;
+    console.log("User data being sent:", user); // Thêm log này
+
     res.status(200).send({
       success: true,
       message: "USer Prfolie Fetched Successfully",
@@ -267,12 +269,7 @@ export const logoutController = async (req, res) => {
   try {
     res
       .status(200)
-      .cookie("token", "", {
-        expires: new Date(Date.now()),
-        secure: process.env.NODE_ENV === "development" ? true : false,
-        httpOnly: process.env.NODE_ENV === "development" ? true : false,
-        sameSite: process.env.NODE_ENV === "development" ? true : false,
-      })
+      .clearCookie("token")
       .send({
         success: true,
         message: "Logout SUccessfully",
