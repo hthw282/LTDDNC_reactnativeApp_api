@@ -7,23 +7,86 @@ import { commentModel } from "../models/commentMode.js";
 import { loyaltyPointModel } from "../models/loyaltyPointModel.js";
 
 // GET ALL PRODUCTS
+// GET ALL PRODUCTS
+// GET ALL PRODUCTS
 export const getAllProductsController = async (req, res) => {
-  const { keyword, category } = req.query;
+  const { sort, priceRange, page, limit, search, category } = req.query; // Add category to the destructured parameters
+  const query = {};
+  const sortOptions = {};
+  const pageNumber = parseInt(page) || 1;
+  const pageSize = parseInt(limit) || 10;
+
   try {
+    // Lọc theo tên (A-Z)
+    if (sort === 'name-asc') {
+      sortOptions.name = 1;
+    } else if (sort === 'name-desc') {
+      sortOptions.name = -1;
+    }
+
+    // Lọc theo giá (thấp đến cao)
+    if (sort === 'price-asc') {
+      sortOptions.price = 1;
+    } else if (sort === 'price-desc') {
+      sortOptions.price = -1;
+    }
+
+    // Lọc theo khoảng giá (nếu có)
+    if (priceRange) {
+      const [minStr, maxStr] = priceRange.split('-');
+      const minPrice = parseFloat(minStr);
+      const maxPrice = parseFloat(maxStr);
+
+      if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+        query.price = { $gte: minPrice, $lte: maxPrice };
+      } else if (!isNaN(minPrice)) {
+        query.price = { $gte: minPrice };
+      } else if (!isNaN(maxPrice)) {
+        query.price = { $lte: maxPrice };
+      }
+    }
+
+    // Lọc theo tìm kiếm (nếu có)
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Lọc theo category (nếu có)
+    if (category) {
+      const foundCategory = await categoryModel.findOne({ category: { $regex: new RegExp(`^${category}$`, 'i') } }); // Case-insensitive search
+      if (foundCategory) {
+        query.category = foundCategory._id;
+      } else {
+        // If the category is not found, you might want to return an error
+        return res.status(400).send({
+          success: false,
+          message: "Category not found",
+          error: "Invalid category name"
+        });
+      }
+    }
+
+    const skip = (pageNumber - 1) * pageSize;
+
     const products = await productModel
-      .find({
-        name: {
-          $regex: keyword ? keyword : "",
-          $options: "i",
-        },
-        category: category ? category : { $exists: true },
-      })
-      .populate("category");
+      .find(query)
+      .populate("category")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize);
+
+    const totalProducts = await productModel.countDocuments(query);
+
     res.status(200).send({
       success: true,
       message: "all products fetched successfully",
-      totalProducts: products.length,
+      totalProducts: totalProducts,
       products,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalProducts / pageSize),
     });
   } catch (error) {
     console.log(error);
@@ -34,6 +97,8 @@ export const getAllProductsController = async (req, res) => {
     });
   }
 };
+
+
 
 // GET TOP PRODUCT
 export const getTopProductsController = async (req, res) => {
